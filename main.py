@@ -13,93 +13,106 @@ from nltk.stem.porter import PorterStemmer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.svm import LinearSVC, SVC
 
+global stop_words
 
 def pre_process(string):
     # 1 remove non-sensical characters including spaces
+    string = string.lower()
     string = re.sub("[^a-zA-Z0-9.,;:!-@'?\s]|'s|'d|'t|'ll|'m|'re|'ve|", "", string)
-
     # 2 tokenize
     tokens = re.split("[\s.,;:!-@?]+", string)
-
-    # 3 lowercase. porter stemmer does this later too
-    tokens = [token.lower() for token in tokens]
-
-    # 4 remove stop words, but first load them
-    with open("stop_words.txt", "r") as f:
-        str_stop = f.read()
-    stop_words = re.split("[\s\n]+", str_stop)
-
+    # 3 remove stop words, but first load them
     _terms = [token for token in tokens if token not in stop_words]
-
-    '''
     # 5 stem using porter stemmer
     stemmer = PorterStemmer()
     _terms = [stemmer.stem(term) for term in _terms]
+    return " ".join(_terms)
+
+if __name__ == '__main__':
+
+    with open("stop_words.txt", "r") as f:
+        str_stop = f.read()
+
+    stop_words = re.split("[\s\n]+", str_stop)
+
+    ###Getting wiki data
+    wiki_data = list(csv.reader(open('wikipedia.annotated.csv')))
+
+    del wiki_data[0] #remove field names
+
+    wiki_data = np.array(wiki_data)
+
+    wiki_requests = wiki_data[:, 2]
+    wiki_requests = [pre_process(one) for one in wiki_requests]
+
+    wiki_scores = map(float, wiki_data[:, 13]) #y
+    wiki_scores = [1*(each >= 0) for each in wiki_scores]
+
+
+    ###Getting SE data
+    SE_data = list(csv.reader(open('stack-exchange.annotated.csv')))
+
+    del SE_data[0] #remove field names
+
+    SE_data = np.array(SE_data)
+
+    SE_requests = SE_data[:, 2]
+    SE_requests = [pre_process(one) for one in SE_requests]
+
+    SE_scores = map(float, SE_data[:, 13]) #y
+    SE_scores = [1*(each >= 0) for each in SE_scores]
+
+    ##############################################################
+    v = CountVectorizer(stop_words='english')
+    wiki_x = v.fit_transform(wiki_requests) #x
+
+    v = CountVectorizer(stop_words='english')
+    SE_x = v.fit_transform(SE_requests) #x
+
+    print "wiki_x.shape[1]:", wiki_x.shape[1]
+    print "SE_x.shape[1]:", SE_x.shape[1]
+
+
+    #using linear SVC
+    clf = LinearSVC(C=20.0)
+    clf.fit(wiki_x, wiki_scores)
+    labels = clf.predict(SE_x)
+
+    '''# using decision trees
+
+    #clf = GradientBoostingClassifier(verbose=1)
+
+    clf = DecisionTreeClassifier()
+
+    cv= ShuffleSplit(len(wiki_x.toarray()),n_iter=2,test_size=0.1) #shuffle split commit
+
+    scores = cross_validation.cross_val_score(clf, wiki_x.toarray(), wiki_scores, cv= cv, n_jobs = -1)
+
+    print scores
+    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))'''
+
+    #print scores
+    # clf = clf.fit(x.toarray(), y)
+    #
+    #
+    #
+    # labels = clf.predict(x.toarray())
+    #
+    # correct = sum([l == t for l, t in zip(labels, y)]) #matches the predicted labels with previous labels and sums
+    # print "correct: ", correct
+    # print "percent:", (correct * 1. / x.shape[0]) * 100
+    # print "count: ", x.shape[0]
+
+
     '''
-    return _terms
+    # applying PCA for dimensionality reduction
+    pca = PCA(n_components=2)
+    r_pca = pca.fit_transform(x.toarray())
 
 
-data = list(
-    csv.reader(
-        open('/home/mehvish/FYP/PycharmProjects/Classifier/politeness-master/wikipedia.annotated.csv')))
-
-del data[0] #why?
-data = np.array(data)
-requests = data[:, 2]
-y = map(float, data[:, 13])
-y = [1*(each >= 0) for each in y]
-
-
-v = CountVectorizer(stop_words='english')
-x = v.fit_transform(requests)
-
-
-
-print "x.shape[1]:", x.shape[1]
-
-with open("data.csv", "wb") as f:
-    for r in requests:
-        terms = pre_process(r)
-        f.write(', '.join(terms) + "\n")
-
-
-# using linear SVC
-# clf = LinearSVC(C=20.0)
-# clf.fit(x, y)
-# labels = clf.predict(x)
-
-# using decision trees
-
-#clf = GradientBoostingClassifier(verbose=1)
-clf = DecisionTreeClassifier()
-
-cv= ShuffleSplit(len(x.toarray()),n_iter=4,test_size=0.1)
-scores = cross_validation.cross_val_score(clf,x.toarray(),y,cv= cv,n_jobs = -1)
-
-print scores
-print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
-#print scores
-# clf = clf.fit(x.toarray(), y)
-#
-#
-#
-# labels = clf.predict(x.toarray())
-#
-# correct = sum([l == t for l, t in zip(labels, y)]) #matches the predicted labels with previous labels and sums
-# print "correct: ", correct
-# print "percent:", (correct * 1. / x.shape[0]) * 100
-# print "count: ", x.shape[0]
-
-
-'''
-# applying PCA for dimensionality reduction
-pca = PCA(n_components=2)
-r_pca = pca.fit_transform(x.toarray())
-
-
-# plotting for visualization
-target_names = ['Dimension1', 'Dimension2']
-plt.scatter(x.toarray())
-plt.show()
-'''
+    # plotting for visualization
+    target_names = ['Dimension1', 'Dimension2']
+    plt.scatter(x.toarray())
+    plt.show()
+    '''
 
