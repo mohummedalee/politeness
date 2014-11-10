@@ -2,7 +2,7 @@ import numpy as np
 import re, csv
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn import cross_validation
+from sklearn import cross_validation, linear_model
 from sklearn.cross_validation import ShuffleSplit
 
 from sklearn.decomposition.pca import PCA
@@ -66,26 +66,41 @@ if __name__ == '__main__':
     v = CountVectorizer(stop_words='english')
     v = v.fit(SE_requests)
     wiki_x = v.transform(wiki_requests)
+
     SE_x = v.transform(SE_requests) 
 
     print "wiki_x.shape[1]:", wiki_x.shape[1]
     print "SE_x.shape[1]:", SE_x.shape[1]
 
-    clf = LinearSVC(C=20.0)
+    clf = SVC(kernel='rbf')
     clf.fit(wiki_x, wiki_scores)
 
     scores = clf.predict(SE_x)
+
+    print "Linear Lasso: ", scores
+    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
+'''
+Linear SVC. Not kernel
+    clf = LinearSVC(C=20.0) #simple SVC gaussian, rbf
+    clf.fit(SE_x, SE_scores)
+
+    scores = clf.predict(wiki_x)
 
     print "SVC c=20: ", scores
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 '''
-    clf = LinearSVC(C=20.0)
-    clf.fit(wiki_x, wiki_scores)
-    labels = clf.scores(SE_x, SE_scores)
+'''
+    clf = linear_model.Lasso(alpha=0.1)
+    clf.fit(SE_x, SE_scores)
 
-    print "SVC c=20 ", labels
+    scores = clf.predict(wiki_x)
 
+    print "Linear Lasso: ", scores
+    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+'''
+'''
     
 
     # using decision trees
