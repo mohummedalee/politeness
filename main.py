@@ -64,20 +64,20 @@ if __name__ == '__main__':
 
     ##############################################################
     v = CountVectorizer(stop_words='english')
-    v = v.fit(SE_requests)
-    wiki_x = v.transform(wiki_requests)
+    v = v.fit(wiki_requests)
+    SE_x = v.transform(SE_requests)
 
-    SE_x = v.transform(SE_requests) 
+    wiki_x = v.transform(wiki_requests) 
 
     print "wiki_x.shape[1]:", wiki_x.shape[1]
     print "SE_x.shape[1]:", SE_x.shape[1]
 
     clf = SVC(kernel='rbf')
-    clf.fit(wiki_x, wiki_scores)
+    clf.fit(SE_x, SE_scores)
 
-    scores = clf.predict(SE_x)
+    scores = clf.predict(wiki_x)
 
-    print "Linear Lasso: ", scores
+    print "SVC RBF: ", scores
     print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
 
 '''
