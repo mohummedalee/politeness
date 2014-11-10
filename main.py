@@ -64,21 +64,31 @@ if __name__ == '__main__':
 
     ##############################################################
     v = CountVectorizer(stop_words='english')
-    wiki_x = v.fit_transform(wiki_requests) #x
-
-    v = CountVectorizer(stop_words='english')
-    SE_x = v.fit_transform(SE_requests) #x
+    v = v.fit(SE_requests)
+    wiki_x = v.transform(wiki_requests)
+    SE_x = v.transform(SE_requests) 
 
     print "wiki_x.shape[1]:", wiki_x.shape[1]
     print "SE_x.shape[1]:", SE_x.shape[1]
 
-
-    #using linear SVC
     clf = LinearSVC(C=20.0)
     clf.fit(wiki_x, wiki_scores)
-    labels = clf.predict(SE_x)
 
-    '''# using decision trees
+    scores = clf.predict(SE_x)
+
+    print "SVC c=20: ", scores
+    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
+'''
+    clf = LinearSVC(C=20.0)
+    clf.fit(wiki_x, wiki_scores)
+    labels = clf.scores(SE_x, SE_scores)
+
+    print "SVC c=20 ", labels
+
+    
+
+    # using decision trees
 
     #clf = GradientBoostingClassifier(verbose=1)
 
@@ -86,11 +96,11 @@ if __name__ == '__main__':
 
     cv= ShuffleSplit(len(wiki_x.toarray()),n_iter=2,test_size=0.1) #shuffle split commit
 
-    scores = cross_validation.cross_val_score(clf, wiki_x.toarray(), wiki_scores, cv= cv, n_jobs = -1)
+    scores = cross_validation.cross_val_score(clf, SE_x.toarray(), wiki_scores, cv= cv, n_jobs = -1)
 
     print scores
-    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))'''
-
+    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+'''
     #print scores
     # clf = clf.fit(x.toarray(), y)
     #
@@ -104,7 +114,7 @@ if __name__ == '__main__':
     # print "count: ", x.shape[0]
 
 
-    '''
+'''
     # applying PCA for dimensionality reduction
     pca = PCA(n_components=2)
     r_pca = pca.fit_transform(x.toarray())
@@ -114,5 +124,5 @@ if __name__ == '__main__':
     target_names = ['Dimension1', 'Dimension2']
     plt.scatter(x.toarray())
     plt.show()
-    '''
+'''
 
