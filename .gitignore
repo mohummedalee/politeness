@@ -1,0 +1,7 @@
+*.pyc
+__init__.py
+.git/
+.idea/
+glove-50d.txt
+output.txt
+Stanford_politeness_corpus/
