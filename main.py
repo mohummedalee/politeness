@@ -11,7 +11,7 @@ if __name__ == '__main__':
     np.random.seed(43)
     # hyper parameters to be tweaked here
     load_rnn_from_pickle = False
-    training_size = 1000  # maximum of 2113
+    training_size = 2113  # maximum of 2113
     l_rate = 0.01
     mini_batch_size = 20
     reg_cost = 0.001
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     RNN.tree_train = indices[:train]
     RNN.tree_val = indices[train:train + val]
     RNN.tree_test = indices[train + val:]
-    print RNN.cross_validate()
-    # RNN.train(True)
+    #print RNN.cross_validate()
+    RNN.train(True)
     # RNN.check_model_veracity()
     print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
     print RNN.test()

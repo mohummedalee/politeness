@@ -34,6 +34,13 @@ def concat(*vectors):
     """
     return np.vstack(vectors)
 
-
-def init_random(mean, var, shape):
+def init_random_purana(mean, var, shape):
     return np.random.normal(mean, var, size=shape)
+
+def init_random(shape):
+    dim = shape[0]
+    range = 1 / (2*np.sqrt(dim))
+    matrix = np.zeros(shape)
+    matrix[:, :dim] = np.random.uniform(-range, range, (dim, dim)) + np.identity(dim)
+    matrix[:, dim:2*dim] = np.random.uniform(-range, range, (dim, dim)) + np.identity(dim)
+    return matrix

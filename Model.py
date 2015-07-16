@@ -25,10 +25,10 @@ class Model:
         self.classes = 2
 
         # weight matrix for internal nodes
-        self.w = init_random(mean=0, var=0.1, shape=(dim, (2*dim+1)))
+        self.w = init_random((dim, (2*dim+1)))
 
         # weight matrix for softmax prediction
-        self.ws = init_random(mean=0, var=0.1, shape=(self.classes, dim+1))
+        self.ws = init_random_purana(mean=0, var=0.1, shape=(self.classes, dim+1))
 
         # size of total parameters
         self.param_size = dim * (2*dim+1) + (self.classes * (dim+1))
