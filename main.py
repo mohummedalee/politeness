@@ -18,7 +18,7 @@ if __name__ == '__main__':
     epochs = 100
     ######################################
 
-    # perform 60-15-25 percent split into train-val-test set
+    # perform 60-15-25 percent splitcross_validate into train-val-test set
     train = np.ceil(0.6 * training_size)
     val = np.ceil(0.15 * training_size)
     test = training_size - train - val
@@ -49,10 +49,7 @@ if __name__ == '__main__':
     RNN.tree_train = indices[:train]
     RNN.tree_val = indices[train:train + val]
     RNN.tree_test = indices[train + val:]
-    temp = RNN.trees[1800:]
-    RNN.trees = RNN.trees[:1800]
     print RNN.cross_validate()
-    RNN.tree_test = temp
     # RNN.train(True)
     # RNN.check_model_veracity()
     print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
