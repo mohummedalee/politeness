@@ -350,6 +350,7 @@ class Model:
         Computes the Cross Entropy cost function with regularization.
         Uses computed predictions from the tree.
         """
+
         # Summation {t * log(y)}
         _log = np.log(tree.predictions)
         # TODO: remove the above line and uncomment the line below
