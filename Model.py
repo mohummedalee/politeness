@@ -3,7 +3,6 @@ from Tree import Tree
 from utilities import *
 import pickle
 
-
 class Model:
     word_to_vec = None
     targets = None
@@ -25,10 +24,10 @@ class Model:
         self.classes = 2
 
         # weight matrix for internal nodes
-        self.w = init_random((dim, (2*dim+1)))
+        self.w = init_random_w((dim, (2*dim+1)))
 
         # weight matrix for softmax prediction
-        self.ws = init_random_purana(mean=0, var=0.1, shape=(self.classes, dim+1))
+        self.ws = init_random_ws((self.classes, dim+1))
 
         # size of total parameters
         self.param_size = dim * (2*dim+1) + (self.classes * (dim+1))
@@ -64,10 +63,10 @@ class Model:
         Assigns new values to weights of the network
         """
         # weight matrix for internal nodes
-        self.w = init_random(mean=0, var=0.1, shape=(self.dim, 2*self.dim + 1))
+        self.w = init_random_w((self.dim, 2*self.dim + 1))
 
         # weight matrix for softmax prediction
-        self.ws = init_random(mean=0, var=0.1, shape=(self.classes, self.dim + 1))
+        self.ws = init_random_ws((self.classes, self.dim + 1))
 
     def cross_validate(self, num_folds=5):
         """
@@ -194,6 +193,24 @@ class Model:
         # params = params - (self.l_rate * grads)
         self.set_params(params)
 
+    def sgd(self, training_batch):
+        """
+        Runs Stochastic Gradient Descent on the training batch given
+        """
+        delta_w = np.zeros(self.w.shape)
+        delta_ws = np.zeros(self.ws.shape)
+        for t in training_batch:
+            tree = self.trees[t]
+            # perform calculations
+            self.calc_outputs(tree)
+            self.calc_errors(tree, delta_w, delta_ws)
+
+        # scale and regularize the parameters
+        scale = 1. / len(training_batch)
+        self.scale_regularize(delta_w, delta_ws, scale)
+
+        return self.get_gradients(delta_w, delta_ws)
+
     def train(self, is_val=False):
         """
         Runs forward and backward passes on the training set.
@@ -201,11 +218,6 @@ class Model:
         Updates model parameters.
         Runs till a stopping criterion is not met.
         """
-        # error derivatives with respect to parameters
-        delta_w = np.zeros(self.w.shape)
-        delta_ws = np.zeros(self.ws.shape)
-        train_cost = 0
-
         # early stopping parameters
         min_cost = np.inf
         max_count = 40
@@ -222,32 +234,17 @@ class Model:
         sumGrads = np.zeros(shape=(self.param_size, 1))
 
         for epoch in xrange(self.epochs):
-            train_cost = 0
             # Shuffle training set and create mini batches
             np.random.shuffle(self.tree_train)
             mini_batches = [self.tree_train[i:min(i + self.mini_batch, train_size)]
                             for i in xrange(0, train_size, self.mini_batch)]
             # run SGD for each mini batch
             for mini_batch in mini_batches:
-                for t in mini_batch:
-                    tree = self.trees[t]
-                    # perform calculations
-                    self.calc_outputs(tree)
-                    self.calc_errors(tree, delta_w, delta_ws)
-                    train_cost += self.get_cost(tree)
-
-                # scale and regularize the parameters
-                scale = 1. / len(mini_batch)
-                self.scale_regularize(delta_w, delta_ws, scale)
-                grads = self.get_gradients(delta_w, delta_ws)
+                # error derivatives with respect to parameters
+                grads = self.sgd(mini_batch)
                 self.update(sumGrads, grads)
 
-                # Reset the derivatives
-                delta_w.fill(0.)
-                delta_ws.fill(0.)
-
             sumGrads.fill(0.)
-
             if is_val:
                 # check performance on validation set for early stopping
                 pred_cost = self.validate()
@@ -269,7 +266,6 @@ class Model:
 
         print "val_costs:"
         print val_costs
-        return train_cost
 
     def validate(self):
         """
@@ -309,32 +305,35 @@ class Model:
         """
         Checks whether the model is correct by performing numerical gradient check.
         """
-        # error derivatives with respect to parameters
-        delta_w = np.zeros(self.w.shape)
-        delta_ws = np.zeros(self.ws.shape)
-        # AdaGrad parameters
-        sumGrads = np.zeros(shape=(self.param_size, 1))
-        for i in xrange(self.epochs):
-            numgrad = None
+        grad = self.sgd(self.tree_train)
+        epsilon = 1e-5
+        initial_params = self.get_params()
+        num_grad = np.zeros(self.param_size)
+        vector = np.zeros(initial_params.shape)
+        scale = 1. / len(self.tree_train)
+        for i in range(self.param_size):
+            vector[i] = epsilon
+
+            self.set_params(initial_params + vector)
+            self.sgd(self.tree_train)
+            c_plus = 0
             for t in self.tree_train:
-                tree = self.trees[t]
-                self.calc_outputs(tree)
-                self.calc_errors(tree, delta_w, delta_ws)
-                if numgrad is not None:
-                    numgrad += self.numerical_gradient(tree)
-                else:
-                    numgrad = self.numerical_gradient(tree)
+                c_plus += self.trees[t].error
+            c_plus *= scale
 
-            scale = 1. / len(self.tree_train)
-            numgrad *= scale
-            self.scale_regularize(delta_w, delta_ws, scale)
-            grad = self.get_gradients(delta_w, delta_ws)
-            print np.around(np.sum(np.abs(grad - numgrad) / np.abs(grad + numgrad)), 10)
+            self.set_params(initial_params - vector)
+            self.sgd(self.tree_train)
+            c_minus = 0
+            for t in self.tree_train:
+                c_minus += self.trees[t].error
+            c_minus *= scale
 
-            self.update(sumGrads, grad)
-            delta_w.fill(0.)
-            delta_ws.fill(0.)
-            sumGrads.fill(0.)
+            num_grad[i] = (c_plus - c_minus) / (2 * epsilon)
+
+            vector[i] = 0
+
+        print np.around(np.sum(np.abs(grad - num_grad) / np.abs(grad + num_grad)), 10)
+        self.set_params(initial_params)
 
     def scale_regularize(self, delta_w, delta_ws, scale):
         """
