@@ -11,14 +11,14 @@ if __name__ == '__main__':
     np.random.seed(43)
     # hyper parameters to be tweaked here
     load_rnn_from_pickle = False
-    training_size = 2113  # maximum of 2113
+    training_size = 50  # maximum of 2113
     l_rate = 0.01
     mini_batch_size = 20
     reg_cost = 0.001
     epochs = 100
     ######################################
 
-    # perform 60-15-25 percent splitcross_validate into train-val-test set
+    # perform 60-15-25 percent split into train-val-test sets
     train = np.ceil(0.6 * training_size)
     val = np.ceil(0.15 * training_size)
     test = training_size - train - val
@@ -49,11 +49,11 @@ if __name__ == '__main__':
     RNN.tree_train = indices[:train]
     RNN.tree_val = indices[train:train + val]
     RNN.tree_test = indices[train + val:]
-    #print RNN.cross_validate()
-    RNN.train(True)
-    # RNN.check_model_veracity()
-    print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
-    print RNN.test()
+    # print RNN.cross_validate()
+    # RNN.train(True)
+    RNN.check_model_veracity()
+    # print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
+    # print RNN.test()
 
     hyper_params = "training_size={0}\nl_rate={1}\nmini_batch_size={2}\nreg_cost={3}\nepochs={4}".format(
         training_size, l_rate, mini_batch_size, reg_cost, epochs)
