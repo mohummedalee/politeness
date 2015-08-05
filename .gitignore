@@ -2,7 +2,9 @@
 __init__.py
 .git/
 .idea/
-glove-50d.txt
+glove-*.txt
 output.txt
 Stanford_politeness_corpus/
-glove-100d.txt
+glove-*.txt
+treebank_vectors_50d_all.pickle
+treebank_vectors_100d_all.pickle
