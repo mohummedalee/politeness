@@ -5,3 +5,4 @@ __init__.py
 glove-50d.txt
 output.txt
 Stanford_politeness_corpus/
+glove-100d.txt

@@ -3,9 +3,11 @@ from Tree import Tree
 from utilities import *
 import pickle
 
+
 class Model:
     word_to_vec = None
     targets = None
+    vocab_word_to_vec = None
 
     def __init__(self, dim=1, reg_cost=0.001, l_rate=0.05, mini_batch=10, epochs=100):
         # list of trees in training set
@@ -51,7 +53,8 @@ class Model:
         self.activ_func = "tanh"
 
         # word-embdeddings dictionary
-        with open('treebank_vectors.pickle', 'rb') as pickle_file:
+        file_name = 'treebank_vectors_' + str(self.dim) + 'd.pickle'
+        with open(file_name, 'rb') as pickle_file:
             Model.word_to_vec = pickle.load(pickle_file)
 
         # target value for each tree
@@ -425,6 +428,7 @@ class Model:
         Maps word to its vector from the embedding matrix
         """
         if word in Model.word_to_vec:
+            Model.vocab_word_to_vec[word] = Model.word_to_vec[word]
             return Model.word_to_vec[word]
         else:
             return Model.word_to_vec['unknown']

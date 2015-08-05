@@ -22,7 +22,7 @@ if __name__ == '__main__':
     train = np.ceil(0.6 * training_size)
     val = np.ceil(0.15 * training_size)
     test = training_size - train - val
-    dim = 50
+    dim = 100
 
     # load parsed trees from file in PTB format
     if load_rnn_from_pickle is False:
@@ -42,6 +42,10 @@ if __name__ == '__main__':
         with open('rnn.pickle', 'rb') as pickle_file:
             RNN = pickle.load(pickle_file)
 
+    with open('treebank_vectors_100d_vocab.pickle', 'wb') as pickle_file:
+        pickle.dump(RNN.vocab_word_to_vec, pickle_file, pickle.HIGHEST_PROTOCOL)
+    print len(RNN.word_to_vec)
+    print len(RNN.vocab_word_to_vec)
     indices = np.arange(0, training_size)
     # create separate indices for the 3 data sets
     np.random.shuffle(RNN.trees)
@@ -50,10 +54,10 @@ if __name__ == '__main__':
     RNN.tree_val = indices[train:train + val]
     RNN.tree_test = indices[train + val:]
     # print RNN.cross_validate()
-    # RNN.train(True)
-    RNN.check_model_veracity()
-    # print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
-    # print RNN.test()
+    RNN.train(True)
+    # RNN.check_model_veracity()
+    print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
+    print RNN.test()
 
     hyper_params = "training_size={0}\nl_rate={1}\nmini_batch_size={2}\nreg_cost={3}\nepochs={4}".format(
         training_size, l_rate, mini_batch_size, reg_cost, epochs)

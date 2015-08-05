@@ -1,17 +1,45 @@
 """
-Used for trying out different things. Don't take them seriously.
+Used for trying out different things. Don't take them too seriously.
 """
 __author__ = 'raza'
 import csv
 import pickle
+import numpy as np
 from utilities import*
 
+'''
+with open('treebank_vectors_50d_saved.pickle', 'rb') as pickle_file:
+    old_50d = pickle.load(pickle_file)
+print len(old_50d)
+with open('treebank_vectors_50d_vocab.pickle', 'rb') as pickle_file:
+    new_50d = pickle.load(pickle_file)
+print len(new_50d)
+diff_words = []
+for word, vec in old_50d.items():
+    if word not in new_50d:
+        diff_words.append(word)
+print diff_words
+'''
 
-import numpy as np
+'''
+with open('treebank_vectors_50d_fake.pickle', 'rb') as pickle_file:
+    d = pickle.load(pickle_file)
+print d['the']
+print len(d)
+exit()
+'''
 
-arr = np.array([9, 4, 1])
-arr2 = np.array([9, 4, 1])
-print arr2 * np.sqrt(arr)
+word2vec = {}
+with open('glove-100d.txt', 'rb') as f:
+    lines = f.readlines()
+for line in lines:
+    parts = line.split(' ', 1)
+    vec = np.fromstring(parts[1], dtype='float64', sep=' ')
+    word2vec[parts[0]] = vec[:, np.newaxis]
+
+with open('treebank_vectors_100d.pickle', 'wb') as pickle_file:
+    pickle.dump(word2vec, pickle_file, pickle.HIGHEST_PROTOCOL)
+
 
 """
 with open('treebank_scores.pickle', 'rb') as pickle_file:
@@ -43,7 +71,5 @@ glove_list = []
 for line in glove_lines:
     vec = line.split()
     glove_list.append(vec[0])
-
-
 
 """
