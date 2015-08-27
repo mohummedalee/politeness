@@ -1,4 +1,5 @@
 from Model import Model
+from request import Request
 import numpy as np
 import pickle
 
@@ -11,7 +12,7 @@ if __name__ == '__main__':
     np.random.seed(43)
     # hyper parameters to be tweaked here
     load_rnn_from_pickle = False
-    training_size = 2113  # maximum of 2113
+    training_size = 200  # maximum of 2113
     l_rate = 0.01
     mini_batch_size = 20
     reg_cost = 0.001
@@ -26,15 +27,32 @@ if __name__ == '__main__':
 
     # load parsed trees from file in PTB format
     if load_rnn_from_pickle is False:
-        with open('WikiTreebankQuartiles_second.txt', 'rb') as fh:
+        with open('WikiTreebankQuartiles.txt', 'rb') as fh:
             RNN = Model(dim=dim, l_rate=l_rate, mini_batch=mini_batch_size, reg_cost=reg_cost, epochs=epochs)
+            all_lines = fh.readlines()
 
-            for i, line in enumerate(fh):
+            # NOTE: There should be NO sentence with < or > 2 sentences
+            i = 0
+            while i < len(all_lines)-1:
+                req = Request()
+
+                # Sentence number 1
+                line = all_lines[i]
                 p = line.find(' ')
-                ptb_string = line[p + 1:]
+                ptb_string = line[p+1:]
                 rid = line[:p]
-                # Add to the list of trees
-                RNN.add_tree(ptb_string, rid)
+                req.id = rid
+                req.add_tree(ptb_string, rid)
+
+                # Sentence number 2
+                line = all_lines[i+1]
+                p = line.find(' ')
+                ptb_string = line[p+1:]
+                rid = line[:p]
+                req.add_tree(ptb_string, rid)
+
+                RNN.add_request(req)
+                i += 2
 
         with open('rnn.pickle', 'wb') as pickle_file:
             pickle.dump(RNN, pickle_file, pickle.HIGHEST_PROTOCOL)
@@ -42,18 +60,29 @@ if __name__ == '__main__':
         with open('rnn.pickle', 'rb') as pickle_file:
             RNN = pickle.load(pickle_file)
 
+    # Just debugging
+    '''
+    RNN = Model(dim=dim, l_rate=l_rate, mini_batch=1, reg_cost=reg_cost, epochs=epochs)
+    req = Request()
+    req.id = '244336'
+    req.add_tree("(ROOT (@NP (@NP (NP thanks) (PP (ADVP (RB very) (RB much)) (@PP (IN for) (NP (PRP$ your) (NN edit))))) (PP (TO to) (NP (DT the) (@NP (JJ <url>) (NN article))))) (. .))", req.id)
+    req.add_tree("(ROOT (@SQ (@SQ (MD would) (NP you)) (VP (VB be) (ADJP (JJ interested) (PP (IN in) (S (VBG tackling) (NP (NP (DT the) (NN <url>)) (PP (IN of) (NP <url>)))))))) (. ?))", req.id)
+    RNN.add_request(req)
+    '''
+
     indices = np.arange(0, training_size)
     # create separate indices for the 3 data sets
-    np.random.shuffle(RNN.trees)
+    np.random.shuffle(RNN.requests)
     np.random.shuffle(indices)
-    RNN.tree_train = indices[:train]
-    RNN.tree_val = indices[train:train + val]
-    RNN.tree_test = indices[train + val:]
+    RNN.request_train = indices[:train]
+    RNN.request_val = indices[train:train + val]
+    RNN.request_test = indices[train + val:]
     # print RNN.cross_validate()
-    RNN.train(True)
-    # RNN.check_model_veracity()
+    #RNN.train(True)
+    RNN.check_model_veracity()
     print "Test Cost Function, Accuracy, Incorrectly classified sentence Ids"
-    print RNN.test()
+    RNN.check_model_veracity()
+    #print RNN.test()
 
     hyper_params = "training_size={0}\nl_rate={1}\nmini_batch_size={2}\nreg_cost={3}\nepochs={4}\ndim={5}".format(
         training_size, l_rate, mini_batch_size, reg_cost, epochs, dim)

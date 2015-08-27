@@ -7,19 +7,20 @@ import pickle
 class Model:
     word_to_vec = None
     targets = None
+    sent_per_req = 2
 
     def __init__(self, dim=50, reg_cost=0.001, l_rate=0.05, mini_batch=20, epochs=100):
-        # list of trees in training set
-        self.trees = []
+        # list of requests in training set
+        self.requests = []
 
         # training set
-        self.tree_train = None
+        self.request_test = None
 
         # validation set
-        self.tree_val = None
+        self.request_val = None
 
         # test set
-        self.tree_test = None
+        self.request_test = None
 
         # number of classes
         self.classes = 2
@@ -75,20 +76,20 @@ class Model:
         Performs K-Fold Cross Validation on the model.
         Returns the list of accuracies and their mean.
         """
-        size = len(self.trees)
+        size = len(self.requests)
         folds = size // num_folds * np.ones(num_folds, dtype=np.int)
         folds[:size % num_folds] += 1
         indices = np.arange(0, size)
         np.random.shuffle(indices)
-        np.random.shuffle(self.trees)
+        np.random.shuffle(self.requests)
 
         current = 0
         accuracies = np.zeros(num_folds)
         for i, fold in enumerate(folds):
             # Assign training and test sets
             start, stop = current, current + fold
-            self.tree_test = indices[start:stop]
-            self.tree_train = np.concatenate((indices[:start], indices[stop:]), axis=0)
+            self.request_test = indices[start:stop]
+            self.request_train = np.concatenate((indices[:start], indices[stop:]), axis=0)
             current = stop
 
             # perform training
@@ -97,6 +98,12 @@ class Model:
             self.reset_weights()
 
         return np.mean(accuracies), accuracies
+
+    def add_request(self, request):
+        """
+        Makes a root node, fills up its structure from PTB format and adds it to the list of trees
+        """
+        self.requests.append(request)
 
     def add_tree(self, penn_tree, _id):
         """
@@ -130,12 +137,16 @@ class Model:
 
             return node.vec
 
-    def calc_outputs(self, tree):
-        """
-        Calls forward prop and calculates predictions from the tree root
-        """
-        output_vec = self.forward(tree.root)
-        tree.predictions = softmax(np.dot(self.ws, concat_with_bias(output_vec)))
+    def calc_outputs(self, request):
+        output_vec = self.forward(request.trees[0].root)
+        request.trees[0].predictions = softmax(np.dot(self.ws, concat_with_bias(output_vec)))
+
+        output_vec = self.forward(request.trees[1].root)
+        request.trees[1].predictions = softmax(np.dot(self.ws, concat_with_bias(output_vec)))
+
+        # Combine predictions
+        request.combine_scores()
+        return request.request_prediction
 
     def back_prop(self, node, delta_com, delta_w, delta_ws):
         """
@@ -166,22 +177,39 @@ class Model:
             self.back_prop(node.children[0], left_delta_down, delta_w, delta_ws)
             self.back_prop(node.children[1], right_delta_down, delta_w, delta_ws)
 
-    def calc_errors(self, tree, delta_w, delta_ws):
+    def calc_errors(self, request, delta_w, delta_ws):
         """
         Calls back prop and computes prediction error from the root node.
+        For a request, you would want to do this for every sentence
         """
+        # For first sentence
+        tree = request.trees[0]
         # y - t
         diff_class = tree.predictions - tree.target
         # delta_ws = (y - t) * p2
         delta_ws += np.dot(diff_class, concat_with_bias(tree.root.vec).T)
 
-        # Ws.T * (y - t)
+        # Ws.T * (y-t)
         delta = np.dot(self.ws.T, diff_class)
-        # Ws.T * (y - t) * f'(p2)
+        # Ws.T * (y-t) * f'(p2)
         delta_node = np.multiply(delta[:-1], tanh_derivative(tree.root.vec))
 
         tree.error = self.get_cost(tree)
+        self.back_prop(tree.root, delta_node, delta_w, delta_ws)
 
+        # For second sentence
+        tree = request.trees[1]
+        # y - t
+        diff_class = tree.predictions - tree.target
+        # delta_ws = (y - t) * p2
+        delta_ws += np.dot(diff_class, concat_with_bias(tree.root.vec).T)
+
+        # Ws.T * (y-t)
+        delta = np.dot(self.ws.T, diff_class)
+        # Ws.T * (y-t) * f'(p2)
+        delta_node = np.multiply(delta[:-1], tanh_derivative(tree.root.vec))
+
+        tree.error = self.get_cost(tree)
         self.back_prop(tree.root, delta_node, delta_w, delta_ws)
 
     def update(self, sumGrads, grads):
@@ -201,14 +229,14 @@ class Model:
         """
         delta_w = np.zeros(self.w.shape)
         delta_ws = np.zeros(self.ws.shape)
-        for t in training_batch:
-            tree = self.trees[t]
+        for r in training_batch:
+            request = self.requests[r]
             # perform calculations
-            self.calc_outputs(tree)
-            self.calc_errors(tree, delta_w, delta_ws)
+            self.calc_outputs(request)
+            self.calc_errors(request, delta_w, delta_ws)
 
         # scale and regularize the parameters
-        scale = 1. / len(training_batch)
+        scale = 1. / (len(training_batch) * 2)
         self.scale_regularize(delta_w, delta_ws, scale)
 
         return self.get_gradients(delta_w, delta_ws)
@@ -225,7 +253,7 @@ class Model:
         max_count = 40
         count_down = max_count
         error_factor = 0.001
-        train_size = len(self.tree_train)
+        train_size = len(self.request_train)
         val_costs = []
 
         # best set of parameters
@@ -237,8 +265,8 @@ class Model:
 
         for epoch in xrange(self.epochs):
             # Shuffle training set and create mini batches
-            np.random.shuffle(self.tree_train)
-            mini_batches = [self.tree_train[i:min(i + self.mini_batch, train_size)]
+            np.random.shuffle(self.request_train)
+            mini_batches = [self.request_train[i:min(i + self.mini_batch, train_size)]
                             for i in xrange(0, train_size, self.mini_batch)]
             # run SGD for each mini batch
             for mini_batch in mini_batches:
@@ -274,10 +302,11 @@ class Model:
         Computes and returns prediction accuracy on the validation set
         """
         val_cost = 0
-        for t in self.tree_val:
-            tree = self.trees[t]
-            self.calc_outputs(tree)
-            val_cost += self.get_cost(tree)
+        for r in self.request_val:
+            request = self.requests[r]
+            self.calc_outputs(request)
+            val_cost += self.get_cost(request.trees[0])
+            val_cost += self.get_cost(request.trees[1])
 
         return val_cost
 
@@ -290,46 +319,45 @@ class Model:
         test_cost = 0
         correct = 0
         incorrect = []
-        for t in self.tree_test:
-            tree = self.trees[t]
-            self.calc_outputs(tree)
-            test_cost += self.get_cost(tree)
-            tree.pred_label = np.argmax(tree.predictions)
-            true_label = np.where(tree.target == 1)[0]
-            if true_label == tree.pred_label:
+        for r in self.request_test:
+            request = self.requests[r]
+            self.calc_outputs(request)
+            test_cost += self.get_cost(request.trees[0]) + self.get_cost(request.trees[1])
+            request.pred_label = np.argmax(request.request_prediction)
+            true_label = np.where(request.target == 1)[0]
+            if true_label == request.pred_label:
                 correct += 1
             else:
-                incorrect.append(tree.id)
+                incorrect.append(request.id)
 
-        return np.around(test_cost, 3), 1.*correct/len(self.tree_test), incorrect
+        return np.around(test_cost, 3), 1.*correct/len(self.request_test), incorrect
 
     def check_model_veracity(self):
         """
         Checks whether the model is correct by performing numerical gradient check.
         """
-        grad = self.sgd(self.tree_train)
+        grad = self.sgd(self.request_train)
         epsilon = 1e-5
         initial_params = self.get_params()
         num_grad = np.zeros(self.param_size)
         vector = np.zeros(initial_params.shape)
-        scale = 1. / len(self.tree_train)
+        scale = 1. / (len(self.request_train) * 2)
         for i in range(self.param_size):
             vector[i] = epsilon
 
             self.set_params(initial_params + vector)
-            self.sgd(self.tree_train)
+            self.sgd(self.request_train)
             c_plus = 0
-            for t in self.tree_train:
-                c_plus += self.trees[t].error
+            for t in self.request_train:
+                c_plus += self.requests[t].trees[0].error + self.requests[t].trees[1].error
             c_plus *= scale
 
             self.set_params(initial_params - vector)
-            self.sgd(self.tree_train)
+            self.sgd(self.request_train)
             c_minus = 0
-            for t in self.tree_train:
-                c_minus += self.trees[t].error
+            for t in self.request_train:
+                c_minus += self.requests[t].trees[0].error + self.requests[t].trees[1].error
             c_minus *= scale
-
             num_grad[i] = (c_plus - c_minus) / (2 * epsilon)
 
             vector[i] = 0
@@ -352,13 +380,10 @@ class Model:
         Computes the Cross Entropy cost function with regularization.
         Uses computed predictions from the tree.
         """
-
+        # For first sentence
         # Summation {t * log(y)}
         _log = np.log(tree.predictions)
-        # TODO: remove the above line and uncomment the line below
-        # _log = np.where(tree.predictions > 0, np.log(tree.predictions), 0)
         cost = -(np.sum(np.multiply(tree.target, _log)))
-
         # L2 weight decay
         cost += self.reg_cost / 2 * (np.sum(self.w * self.w))
         cost += self.reg_cost / 2 * (np.sum(self.ws * self.ws))
