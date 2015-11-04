@@ -84,9 +84,12 @@ if __name__ == '__main__':
     RNN.request_val = indices[train:train + val]
     RNN.request_test = indices[train + val:]
     # print RNN.cross_validate()
+
+    # For seeing missing words
     print 'Known words:', len(RNN.known), 'Unknown words:', len(RNN.unknown)
     with open('missing_words.txt', 'w') as fh:
         fh.write(RNN.unknown.__str__())
+
     RNN.train(True)
     # Pickle the model after it has been trained
     if load_rnn_from_pickle is False:
