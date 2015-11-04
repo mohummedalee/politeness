@@ -8,6 +8,7 @@ import numpy as np
 from utilities import*
 
 '''
+### Run this to see new words
 with open('treebank_vectors_50d_saved.pickle', 'rb') as pickle_file:
     old_50d = pickle.load(pickle_file)
 print len(old_50d)
@@ -22,13 +23,14 @@ print diff_words
 '''
 
 '''
+### Bahh
 with open('treebank_vectors_50d_fake.pickle', 'rb') as pickle_file:
     d = pickle.load(pickle_file)
 print d['the']
 print len(d)
 exit()
 '''
-'''
+
 word2vec = {}
 with open('glove-100d.txt', 'rb') as f:
     lines = f.readlines()
@@ -37,21 +39,25 @@ for line in lines:
     vec = np.fromstring(parts[1], dtype='float64', sep=' ')
     word2vec[parts[0]] = vec[:, np.newaxis]
 
-with open('treebank_vectors_100d.pickle', 'wb') as pickle_file:
-    pickle.dump(word2vec, pickle_file, pickle.HIGHEST_PROTOCOL)
-'''
+word2vec['<person>'] = word2vec['person']
+word2vec['<url>'] = word2vec['url']
 
+with open('treebank_vectors_100d_all.pickle', 'wb') as pickle_file:
+    pickle.dump(word2vec, pickle_file, pickle.HIGHEST_PROTOCOL)
+
+'''
 # Checking if there are still any requests with > or < 2 sentences
-with open('WikiTreebankQuartilesRefined.txt', 'r') as fh:
+with open('treebanks/WikiTreebanks.txt', 'r') as fh:
     all_lines = fh.readlines()
     i = 0
     while i < len(all_lines):
         num1 = all_lines[i].split()
-        num2 = all_lines[i+1].split()        
+        num2 = all_lines[i+1].split()
         if num1[0].strip() != num2[0].strip():
             print num1[0], 'failed.'
 
         i += 2
+'''
 
 """
 with open('treebank_scores.pickle', 'rb') as pickle_file:
@@ -69,9 +75,7 @@ with open('treebank_vectors.pickle', 'wb') as pickle_file:
     pickle.dump(d, pickle_file, pickle.HIGHEST_PROTOCOL)
 
 
-
-data = list(csv.reader(open('Stanford_politeness_corpus/wikipedia.annotated.csv'), delimiter=','))
-del data[0]
+data = list(csv.reader(open('treebanks/wikipedia_quartiles_cleaned.csv', 'rU'), delimiter=','))
 data = np.array(data)
 wiki_lines = data[:, 2]
 
@@ -83,5 +87,4 @@ glove_list = []
 for line in glove_lines:
     vec = line.split()
     glove_list.append(vec[0])
-
 """

@@ -8,6 +8,8 @@ class Model:
     word_to_vec = None
     targets = None
     sent_per_req = 2
+    known = set()
+    unknown = set()
 
     def __init__(self, dim=50, reg_cost=0.001, l_rate=0.05, mini_batch=20, epochs=100):
         # list of requests in training set
@@ -53,7 +55,7 @@ class Model:
         self.activ_func = "tanh"
 
         # word-embdeddings dictionary
-        file_name = 'treebank_vectors_' + str(self.dim) + 'd.pickle'
+        file_name = 'treebank_vectors_' + str(self.dim) + 'd_new.pickle'
         with open(file_name, 'rb') as pickle_file:
             Model.word_to_vec = pickle.load(pickle_file)
 
@@ -452,6 +454,8 @@ class Model:
         Maps word to its vector from the embedding matrix
         """
         if word in Model.word_to_vec:
+            Model.known.add(word)
             return Model.word_to_vec[word]
         else:
+            Model.unknown.add(word)
             return Model.word_to_vec['unknown']

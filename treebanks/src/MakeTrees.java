@@ -21,11 +21,22 @@ import javax.swing.*;
 
 /** This class demonstrates building and using a Stanford CoreNLP pipeline. */
 public class MakeTrees {
+    public static void gain(String[] args) throws Exception{
+        PrintWriter writer = new PrintWriter("check.txt", "UTF-8");
+
+        writer.println("1");
+        writer.println("2");
+        for(int i=0; i<10; i++)
+            writer.println(Integer.toString(i));
+
+        writer.close();
+    }
+
     public static void main(String[] args) throws Exception{
         BufferedReader br;
         String line;
         String delimiter = ",(?=([^\"]*\"[^\"]*\")*[^\"]*$)";
-        String inputFilename = "wiki_quartiles.csv";
+        String inputFilename = "wiki_quartiles_cleaned.csv";
         String outputFilename = "WikiTreebanks.txt";
 
         try {
@@ -33,6 +44,7 @@ public class MakeTrees {
             // Output files
             PrintWriter out;
             out = new PrintWriter(outputFilename);
+            PrintWriter anomalies = new PrintWriter("anomalies.txt");
 
             // Create a CoreNLP pipeline. This line just builds the default pipeline.
             Properties props = new Properties();
@@ -52,7 +64,7 @@ public class MakeTrees {
                 String[] wiki = line.split(delimiter);
                 // wiki[0] = id, wiki[1] = sentence, wiki[2] = annotation
                 wiki[1] = wiki[1].replaceAll("(^\")|(\"$)", "");
-                System.out.println(wiki[1]);
+                //System.out.println(wiki[1]);
                 annotation = new Annotation(wiki[1]);
 
                 // Annotate the sentence
@@ -62,7 +74,7 @@ public class MakeTrees {
                 // Fetch the trees
                 sentences = annotation.get(CoreAnnotations.SentencesAnnotation.class);
 
-                if(sentences.size() > 1) {
+                if(sentences.size() == 2) {
                     for (CoreMap sentence : sentences) {
                         // Pick first sentence
                         //CoreMap sentence = sentences.get(0);
@@ -73,10 +85,15 @@ public class MakeTrees {
                         tp.printTree(tree, out);
                     }
                 }
+                else{
+                    System.out.println("Anomaly occured at id " + wiki[0]);
+                    anomalies.println(wiki[0]);
+                }
             }
 
             // Close the file
             br.close();
+            anomalies.close();
         }
         catch (FileNotFoundException e) {
             e.printStackTrace();

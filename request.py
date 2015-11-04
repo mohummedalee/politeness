@@ -20,9 +20,11 @@ class Request:
         Makes a root node, fills up its structure from PTB format and adds it to the list of trees
         """
         tree = Tree(_id)
-        _class = Model.targets[_id]
-        self.set_target(_class)
-        tree.set_target(_class)
+        # _id == 1 is used as a sentinel value for the website
+        if _id != -1:
+            _class = Model.targets[_id]
+            self.set_target(_class)
+            tree.set_target(_class)
         tree.root = Node()
         tree.root.read(penn_tree, 0, True)
         # Chaipi for life
